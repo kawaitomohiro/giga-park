@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#FF8C00">
+<meta name="description" content="楽しく学べるウェブアプリのポータル（Web版）。Web版のあるアプリはGoogleを使えない学校でも開けます。">
+<script src="apps.js"></script>
+<script>
+// Web版：google.script.run の かわり。アプリ一覧は このページに 入っている（apps.js）。
+// 教室・先生・管理の 呼び出しは 「Google版で 使えます」と 失敗を 返す。プレイ回数は 記録しない。
+(function(){
+  var DATA = window.__GIGA_DATA__ || { apps: [], tags: [] };
+  function plain(v){ return v === undefined ? null : JSON.parse(JSON.stringify(v)); }
+  var SV = {
+    getInitialData: function(){ return DATA; },
+    getApps: function(){ return DATA.apps; },
+    getMasterTags: function(){ return DATA.tags; },
+    recordClick: function(){ return true; }
+  };
+  function runner(ok, ng){
+    return new Proxy({}, { get: function(t, k){
+      if (k === 'withSuccessHandler') return function(f){ return runner(f, ng); };
+      if (k === 'withFailureHandler') return function(f){ return runner(ok, f); };
+      if (k === 'withUserObject') return function(){ return runner(ok, ng); };
+      return function(){
+        setTimeout(function(){
+          if (SV[k]) { if (ok) ok(plain(SV[k]())); }
+          else if (ng) ng(new Error('この機能は Google版で 使えます'));
+        }, 20);
+      };
+    }});
+  }
+  window.google = { script: { run: runner(null, null) } };
+})();
+</script>
+<title>GIGAパーク！</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=Dela+Gothic+One&display=swap" rel="stylesheet">
+  <style>
+    /* === CSS変数 === */
+    :root {
+      --c-sun: #FF8C00; --c-sun-light: #FFB347;
+      --c-sky: #E8760A; --c-sky-light: #FFECD2;
+      --c-pink: #FF6B3D; --c-pink-light: #FFD6C9;
+      --c-purple: #D4600A; --c-purple-light: #FFE8D6;
+      --c-white: #FFFFFE; --c-cream: #FFF6ED;
+      --c-dark: #3D2B1F; --c-gray: #7A6B5D; --c-light-gray: #F3EDE6;
+      --c-red: #E53E3E; --c-red-light: #FED7D7;
+      --c-green: #38A169; --c-green-light: #C6F6D5;
+      --font-display: 'Dela Gothic One', 'Zen Maru Gothic', sans-serif;
+      --font-body: 'Zen Maru Gothic', sans-serif;
+      --radius: 20px;
+      --shadow: 0 8px 30px rgba(60,30,0,0.08);
+      --shadow-hover: 0 16px 40px rgba(60,30,0,0.14);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font-body); background: var(--c-cream); color: var(--c-dark); min-height: 100vh; overflow-x: hidden; }
+    body::before { content:''; position:fixed; top:-200px; right:-200px; width:500px; height:500px; background:radial-gradient(circle,rgba(255,140,0,0.08) 0%,transparent 70%); border-radius:50%; z-index:0; pointer-events:none; }
+    body::after  { content:''; position:fixed; bottom:-150px; left:-150px; width:400px; height:400px; background:radial-gradient(circle,rgba(255,179,71,0.08) 0%,transparent 70%); border-radius:50%; z-index:0; pointer-events:none; }
+
+    /* === ナビバー === */
+    .navbar { background:rgba(255,255,255,0.85); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-bottom:1px solid rgba(0,0,0,0.04); position:sticky; top:0; z-index:100; padding:0 24px; }
+    .navbar-inner { max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:64px; }
+    .navbar-brand { font-family:var(--font-display); font-size:1.4rem; font-weight:700; color:var(--c-sun); display:flex; align-items:center; gap:6px; }
+    .navbar-actions { display:flex; align-items:center; gap:10px; }
+    .btn-icon { width:42px; height:42px; border-radius:50%; border:2px solid var(--c-light-gray); background:var(--c-white); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1.2rem; transition:all 0.25s ease; color:var(--c-gray); }
+    .btn-icon:hover { border-color:var(--c-sun); background:linear-gradient(135deg,var(--c-sun),var(--c-sun-light)); color:white; transform:translateY(-2px); box-shadow:0 4px 14px rgba(255,159,28,0.3); }
+    .btn-code { padding:8px 18px; border-radius:50px; border:2px solid var(--c-sun-light); background:var(--c-white); font-family:var(--font-body); font-size:0.88rem; font-weight:700; color:var(--c-sun); cursor:pointer; transition:all 0.25s ease; display:flex; align-items:center; gap:6px; }
+    .btn-code:hover { background:linear-gradient(135deg,var(--c-sun),var(--c-sun-light)); color:white; border-color:var(--c-sun); transform:translateY(-2px); box-shadow:0 4px 14px rgba(255,159,28,0.3); }
+
+    /* === 教室モードバナー === */
+    .room-banner { display:none; background:linear-gradient(135deg,#FF6D00,#FF8F00); color:white; text-align:center; padding:12px 24px; font-weight:700; font-size:0.95rem; }
+    .room-banner.show { display:block; }
+    .room-banner-inner { max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; }
+    .room-exit-btn { padding:6px 16px; border-radius:50px; border:2px solid rgba(255,255,255,0.5); background:rgba(255,255,255,0.15); color:white; font-family:var(--font-body); font-size:0.82rem; font-weight:700; cursor:pointer; transition:all 0.2s ease; }
+    .room-exit-btn:hover { background:rgba(255,255,255,0.3); border-color:white; }
+
+    /* === ヒーロー === */
+    .hero { position:relative; padding:60px 24px 50px; text-align:center; overflow:hidden; background:linear-gradient(170deg,#FFF6ED 0%,#FFE0B2 30%,#FFECD2 60%,#FFF3E0 100%); }
+    .hero::before { content:'🎮🎲🎯🎪🎠🎡'; position:absolute; top:10px; left:50%; transform:translateX(-50%); font-size:2rem; letter-spacing:24px; opacity:0.15; pointer-events:none; white-space:nowrap; }
+    .hero-title { font-family:var(--font-display); font-size:clamp(2.8rem,7vw,5rem); font-weight:900; color:#FF6D00; text-shadow: 0 3px 0 #E65100, 0 6px 0 #BF360C, 0 9px 15px rgba(191,54,12,0.25), 0 0 40px rgba(255,140,0,0.15); margin-bottom:12px; animation:heroIn 0.8s cubic-bezier(0.22,1,0.36,1) both; line-height:1.2; letter-spacing:4px; }
+    .hero-sub { font-size:clamp(1rem,2.5vw,1.3rem); color:var(--c-gray); font-weight:700; animation:heroIn 0.8s 0.15s cubic-bezier(0.22,1,0.36,1) both; }
+    @keyframes heroIn { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+    .wave-divider { position:relative; margin-top:-2px; height:50px; overflow:hidden; }
+    .wave-divider svg { position:absolute; bottom:0; width:100%; height:50px; }
+
+    /* === タグフィルター === */
+    .filter-bar { max-width:1200px; margin:0 auto; padding:28px 24px 8px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; animation:fadeUp 0.6s 0.3s both; }
+    .filter-label { font-weight:700; font-size:0.9rem; color:var(--c-gray); margin-right:4px; }
+    .tag-btn { padding:8px 18px; border-radius:50px; border:2px solid var(--c-light-gray); background:var(--c-white); font-family:var(--font-body); font-size:0.85rem; font-weight:600; color:var(--c-gray); cursor:pointer; transition:all 0.25s cubic-bezier(0.22,1,0.36,1); white-space:nowrap; }
+    .tag-btn:hover { border-color:var(--c-sky); color:var(--c-sky); transform:translateY(-2px); box-shadow:0 4px 12px rgba(46,196,182,0.15); }
+    .tag-btn.active { background:linear-gradient(135deg,var(--c-sky),var(--c-sky-light)); border-color:var(--c-sky); color:white; box-shadow:0 4px 14px rgba(46,196,182,0.3); }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+    /* === カードグリッド === */
+    .grid-area { flex:1; min-width:0; padding-top:20px; }
+    .app-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:24px; }
+    .card { background:var(--c-white); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); transition:all 0.4s cubic-bezier(0.22,1,0.36,1); display:flex; flex-direction:column; position:relative; animation:cardIn 0.5s both; border:1px solid rgba(0,0,0,0.03); }
+    .card:hover { transform:translateY(-8px) scale(1.015); box-shadow:var(--shadow-hover); }
+    @keyframes cardIn { from{opacity:0;transform:translateY(24px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+    .card-img-wrap { width:100%; height:180px; overflow:hidden; position:relative; }
+    .card-img-wrap img { width:100%; height:100%; object-fit:cover; transition:transform 0.5s ease; }
+    .card:hover .card-img-wrap img { transform:scale(1.08); }
+    .card-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:3.5rem; background:linear-gradient(135deg,#FFE0B2,#FFECD2); }
+    .card-body { padding:20px; flex:1; display:flex; flex-direction:column; }
+    .card-title { font-family:var(--font-display); font-size:1.15rem; font-weight:700; color:var(--c-dark); margin-bottom:6px; }
+    .card-desc { font-size:0.88rem; color:var(--c-gray); line-height:1.55; flex:1; margin-bottom:14px; }
+    .card-tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+    .card-tag { font-size:0.72rem; font-weight:600; padding:3px 10px; border-radius:50px; background:#FFECD2; color:#E8760A; }
+    .card-tag:nth-child(3n+2) { background:#FFD6C9; color:#D4600A; }
+    .card-tag:nth-child(3n)   { background:#FFF3E0; color:#FF8C00; }
+    .play-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:13px; border:none; border-radius:14px; background:linear-gradient(135deg,var(--c-sun),#FFAD33); color:white; font-family:var(--font-body); font-size:0.95rem; font-weight:700; cursor:pointer; transition:all 0.3s cubic-bezier(0.22,1,0.36,1); box-shadow:0 4px 16px rgba(255,159,28,0.25); text-decoration:none; }
+    .play-btn:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(255,159,28,0.4); }
+    .play-btn:active { transform:translateY(0); }
+
+    /* === フッター === */
+    .footer { background:linear-gradient(135deg,#3D2B1F,#4A3728); color:rgba(255,255,255,0.7); padding:40px 24px; text-align:center; }
+    .footer-notice { background:rgba(255,255,255,0.07); border-radius:16px; padding:20px 24px; margin-bottom:20px; max-width:600px; margin-left:auto; margin-right:auto; border:1px solid rgba(255,255,255,0.08); }
+    .footer-notice strong { display:block; margin-bottom:6px; color:#FFB347; }
+    .footer-notice p { font-size:0.88rem; line-height:1.6; }
+    .footer-copy { font-size:0.82rem; opacity:0.5; margin-top:20px; }
+    .footer-links { display:flex; justify-content:center; gap:16px; margin-top:16px; flex-wrap:wrap; }
+    .admin-link { display:inline-block; padding:8px 20px; border-radius:50px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.35); font-size:0.78rem; font-weight:500; cursor:pointer; transition:all 0.3s ease; text-decoration:none; }
+    .admin-link:hover { color:rgba(255,255,255,0.6); border-color:rgba(255,255,255,0.3); background:rgba(255,255,255,0.08); }
+
+    /* === モーダル共通 === */
+    .modal-overlay { position:fixed; inset:0; background:rgba(45,42,50,0.45); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:200; display:none; align-items:center; justify-content:center; padding:20px; opacity:0; transition:opacity 0.3s ease; }
+    .modal-overlay.open { display:flex; opacity:1; }
+    .modal-box { background:var(--c-white); border-radius:24px; padding:32px; max-width:540px; width:100%; box-shadow:0 24px 60px rgba(0,0,0,0.2); max-height:90vh; overflow-y:auto; animation:modalIn 0.35s cubic-bezier(0.22,1,0.36,1); }
+    .modal-box.wide { max-width:680px; }
+    @keyframes modalIn { from{opacity:0;transform:translateY(24px) scale(0.95)} to{opacity:1;transform:translateY(0) scale(1)} }
+    .modal-title { font-family:var(--font-display); font-size:1.5rem; font-weight:700; text-align:center; margin-bottom:20px; color:var(--c-dark); }
+
+    /* === パスワード === */
+    .pw-dots { display:flex; justify-content:center; gap:10px; margin-bottom:20px; padding:18px; background:var(--c-cream); border-radius:16px; }
+    .pw-dot { width:14px; height:14px; border-radius:50%; background:#D8D8DD; transition:all 0.2s ease; }
+    .pw-dot.filled { background:var(--c-sun); transform:scale(1.2); }
+    .numpad { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; }
+    .num-btn { padding:16px; border:2px solid var(--c-light-gray); border-radius:14px; background:var(--c-white); font-family:var(--font-body); font-size:1.3rem; font-weight:700; color:var(--c-dark); cursor:pointer; transition:all 0.2s ease; }
+    .num-btn:hover { background:var(--c-cream); border-color:var(--c-sun-light); transform:scale(1.05); }
+    .num-btn:active { transform:scale(0.95); }
+    .num-btn.accent { background:linear-gradient(135deg,var(--c-sun),var(--c-sun-light)); color:white; border-color:var(--c-sun); }
+    .num-btn.accent:hover { box-shadow:0 4px 14px rgba(255,159,28,0.3); }
+    .pw-error { text-align:center; color:var(--c-pink); font-size:0.9rem; font-weight:600; display:none; margin-top:10px; }
+    .pw-error.show { display:block; animation:shake 0.4s ease; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+
+    /* === フォーム部品 === */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display:block; font-weight:700; font-size:0.85rem; color:var(--c-dark); margin-bottom:5px; }
+    .form-input, .form-textarea { width:100%; padding:11px 14px; border:2px solid var(--c-light-gray); border-radius:14px; font-family:var(--font-body); font-size:0.9rem; transition:all 0.2s ease; background:var(--c-cream); color:var(--c-dark); }
+    .form-input:focus, .form-textarea:focus { outline:none; border-color:var(--c-sky); background:var(--c-white); box-shadow:0 0 0 4px rgba(46,196,182,0.1); }
+    .form-textarea { resize:vertical; }
+    .form-hint { font-size:0.75rem; color:var(--c-gray); margin-top:3px; }
+    .btn-row { display:flex; gap:12px; margin-top:20px; }
+    .btn-cancel { flex:1; padding:13px; border:2px solid var(--c-light-gray); border-radius:14px; background:var(--c-white); font-family:var(--font-body); font-weight:600; font-size:0.92rem; color:var(--c-gray); cursor:pointer; transition:all 0.2s ease; }
+    .btn-cancel:hover { background:var(--c-light-gray); }
+    .btn-submit { flex:1; padding:13px; border:none; border-radius:14px; background:linear-gradient(135deg,var(--c-sky),#22B8AA); font-family:var(--font-body); font-weight:700; font-size:0.92rem; color:white; cursor:pointer; transition:all 0.3s ease; box-shadow:0 4px 16px rgba(46,196,182,0.3); }
+    .btn-submit:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(46,196,182,0.4); }
+    .btn-submit:active { transform:translateY(0); }
+    .btn-submit:disabled { opacity:0.6; cursor:not-allowed; transform:none; box-shadow:none; }
+
+    /* === 管理パネル タブ === */
+    .admin-tabs { display:flex; gap:0; margin-bottom:20px; border-radius:14px; overflow:hidden; border:2px solid var(--c-light-gray); }
+    .admin-tab { flex:1; padding:11px 6px; text-align:center; font-weight:700; font-size:0.82rem; cursor:pointer; transition:all 0.25s ease; border:none; background:var(--c-white); font-family:var(--font-body); color:var(--c-gray); }
+    .admin-tab:not(:last-child) { border-right:2px solid var(--c-light-gray); }
+    .admin-tab:hover { background:var(--c-cream); }
+    .admin-tab.active { background:linear-gradient(135deg,var(--c-sun),var(--c-sun-light)); color:white; }
+    .admin-section { display:none; }
+    .admin-section.active { display:block; }
+
+    /* === タグ管理 === */
+    .tag-manage-list { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; padding:14px; background:var(--c-cream); border-radius:16px; min-height:48px; max-height:180px; overflow-y:auto; }
+    .tag-manage-item { display:inline-flex; align-items:center; gap:6px; padding:5px 11px 5px 13px; border-radius:50px; font-size:0.82rem; font-weight:600; background:#FFECD2; color:#E8760A; animation:fadeUp 0.3s both; }
+    .tag-manage-item:nth-child(3n+2) { background:#FFD6C9; color:#D4600A; }
+    .tag-manage-item:nth-child(3n)   { background:#FFF3E0; color:#FF8C00; }
+    .tag-delete-btn { width:20px; height:20px; border-radius:50%; border:none; background:rgba(0,0,0,0.12); color:white; font-size:0.7rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s ease; line-height:1; }
+    .tag-delete-btn:hover { background:rgba(220,38,38,0.7); transform:scale(1.15); }
+    .tag-add-row { display:flex; gap:10px; }
+    .tag-add-row .form-input { flex:1; }
+    .tag-add-btn { padding:11px 18px; border:none; border-radius:14px; background:linear-gradient(135deg,var(--c-sky),#22B8AA); color:white; font-family:var(--font-body); font-weight:700; font-size:0.88rem; cursor:pointer; transition:all 0.2s ease; white-space:nowrap; box-shadow:0 3px 12px rgba(46,196,182,0.25); }
+    .tag-add-btn:hover { transform:translateY(-2px); box-shadow:0 5px 16px rgba(46,196,182,0.35); }
+    .tag-add-btn:active { transform:translateY(0); }
+    .tag-empty { text-align:center; color:var(--c-gray); font-size:0.88rem; padding:10px; width:100%; }
+
+    /* === タグチップ選択 === */
+    .tag-select-wrap { display:flex; flex-wrap:wrap; gap:8px; padding:10px; background:var(--c-cream); border-radius:14px; border:2px solid var(--c-light-gray); min-height:42px; }
+    .tag-chip { padding:5px 13px; border-radius:50px; font-size:0.8rem; font-weight:600; border:2px solid var(--c-light-gray); background:var(--c-white); color:var(--c-gray); cursor:pointer; transition:all 0.2s ease; user-select:none; }
+    .tag-chip:hover { border-color:var(--c-sky); color:var(--c-sky); }
+    .tag-chip.selected { background:linear-gradient(135deg,var(--c-sky),var(--c-sky-light)); border-color:var(--c-sky); color:white; }
+
+    /* === アプリ一覧（編集用） === */
+    .app-list { max-height:360px; overflow-y:auto; margin-bottom:12px; }
+    .app-list-item { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:14px; background:var(--c-cream); margin-bottom:8px; transition:all 0.2s ease; cursor:pointer; border:2px solid transparent; }
+    .app-list-item:hover { border-color:var(--c-sky-light); background:var(--c-white); box-shadow:0 2px 10px rgba(0,0,0,0.05); }
+    .app-list-item.editing { border-color:var(--c-sky); background:var(--c-white); }
+    .app-list-icon { width:42px; height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0; background:linear-gradient(135deg,#FFE0B2,#FFECD2); }
+    .app-list-icon img { width:100%; height:100%; object-fit:cover; border-radius:10px; }
+    .app-list-info { flex:1; min-width:0; }
+    .app-list-title { font-weight:700; font-size:0.92rem; color:var(--c-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .app-list-sub { font-size:0.75rem; color:var(--c-gray); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .app-list-actions { display:flex; gap:6px; flex-shrink:0; }
+    .app-list-btn { width:34px; height:34px; border-radius:50%; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.85rem; transition:all 0.2s ease; }
+    .app-list-btn.edit-btn { background:var(--c-sky-light); color:var(--c-sky); }
+    .app-list-btn.edit-btn:hover { background:var(--c-sky); color:white; transform:scale(1.1); }
+    .app-list-btn.del-btn { background:var(--c-red-light); color:var(--c-red); }
+    .app-list-btn.del-btn:hover { background:var(--c-red); color:white; transform:scale(1.1); }
+
+    /* === 編集フォーム（管理パネル内） === */
+    .edit-form-wrap { background:var(--c-cream); border-radius:16px; padding:20px; margin-bottom:12px; border:2px solid var(--c-sky-light); animation:fadeUp 0.3s both; }
+    .edit-form-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+    .edit-form-title { font-family:var(--font-display); font-weight:700; font-size:1.05rem; color:var(--c-sky); }
+    .edit-form-close { width:30px; height:30px; border-radius:50%; border:none; background:var(--c-light-gray); color:var(--c-gray); font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s ease; }
+    .edit-form-close:hover { background:var(--c-gray); color:white; }
+    .edit-btn-row { display:flex; gap:10px; margin-top:16px; }
+    .edit-save-btn { flex:1; padding:11px; border:none; border-radius:12px; background:linear-gradient(135deg,var(--c-sky),#22B8AA); color:white; font-family:var(--font-body); font-weight:700; font-size:0.88rem; cursor:pointer; transition:all 0.2s ease; box-shadow:0 3px 12px rgba(46,196,182,0.25); }
+    .edit-save-btn:hover { transform:translateY(-2px); }
+    .edit-save-btn:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
+    .edit-delete-btn { padding:11px 16px; border:none; border-radius:12px; background:var(--c-red-light); color:var(--c-red); font-family:var(--font-body); font-weight:700; font-size:0.88rem; cursor:pointer; transition:all 0.2s ease; }
+    .edit-delete-btn:hover { background:var(--c-red); color:white; }
+
+    /* === ローディング・空・トースト === */
+    .loader { text-align:center; padding:80px 24px; font-size:1.1rem; color:var(--c-gray); }
+    .loader-spinner { width:40px; height:40px; border:4px solid var(--c-light-gray); border-top-color:var(--c-sun); border-radius:50%; animation:spin 0.7s linear infinite; margin:0 auto 16px; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .empty-state { text-align:center; padding:60px 24px; color:var(--c-gray); }
+    .empty-state-icon { font-size:3rem; margin-bottom:12px; }
+    .empty-state-text { font-size:1.05rem; }
+    .toast { position:fixed; bottom:40px; left:50%; transform:translateX(-50%) translateY(20px); background:#3D2B1F; color:white; padding:14px 28px; border-radius:50px; font-weight:600; font-size:0.9rem; box-shadow:0 8px 30px rgba(60,30,0,0.2); opacity:0; transition:all 0.35s ease; z-index:300; pointer-events:none; }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+    /* === メインレイアウト（サイドバー対応） === */
+    .main-layout { max-width:1200px; margin:0 auto; padding:0 24px 60px; display:flex; gap:24px; align-items:flex-start; }
+    .grid-area { flex:1; min-width:0; }
+
+    /* === サイドバー（人気ランキング） === */
+    .sidebar { width:220px; flex-shrink:0; position:sticky; top:80px; }
+    .sidebar-box { background:var(--c-white); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; border:2px solid rgba(255,140,0,0.18); }
+    .sidebar-title { font-family:var(--font-display); font-size:1rem; font-weight:700; color:var(--c-sun); text-align:center; margin-bottom:16px; display:flex; align-items:center; justify-content:center; gap:6px; }
+    .rank-item { display:flex; align-items:center; gap:10px; padding:10px; border-radius:12px; margin-bottom:8px; transition:all 0.25s ease; cursor:pointer; text-decoration:none; color:var(--c-dark); background:var(--c-cream); border:1px solid transparent; }
+    .rank-item:hover { border-color:var(--c-sun-light); transform:translateX(4px); box-shadow:0 2px 10px rgba(255,159,28,0.12); }
+    .rank-item:last-child { margin-bottom:0; }
+    .rank-medal { font-size:1.5rem; flex-shrink:0; width:32px; text-align:center; }
+    .rank-info { flex:1; min-width:0; }
+    .rank-name { font-weight:700; font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--c-dark); }
+    .rank-clicks { font-size:0.72rem; color:var(--c-gray); margin-top:2px; }
+    .rank-empty { text-align:center; color:var(--c-gray); font-size:0.82rem; padding:20px 0; }
+
+    /* === NEWバッジ === */
+    .new-ribbon { position:absolute; top:12px; left:-6px; background:linear-gradient(135deg,#FF6D00,#FF8F00); color:white; font-family:var(--font-display); font-size:0.72rem; font-weight:700; padding:4px 14px 4px 10px; border-radius:0 8px 8px 0; box-shadow:0 3px 10px rgba(255,109,0,0.35); z-index:10; letter-spacing:1px; animation:newPulse 2s ease-in-out infinite; }
+    .new-ribbon::before { content:''; position:absolute; left:0; bottom:-6px; border-width:3px 0 3px 6px; border-style:solid; border-color:transparent transparent transparent #BF360C; }
+    @keyframes newPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+
+    /* === 子ども用コード入力モーダル === */
+    .code-input-wrap { display:flex; justify-content:center; gap:8px; margin-bottom:20px; }
+    .code-char-input { width:52px; height:62px; border:3px solid var(--c-light-gray); border-radius:14px; background:var(--c-cream); font-family:var(--font-display); font-size:1.6rem; font-weight:700; text-align:center; color:var(--c-dark); text-transform:uppercase; transition:all 0.2s ease; }
+    .code-char-input:focus { outline:none; border-color:var(--c-sun); background:var(--c-white); box-shadow:0 0 0 4px rgba(255,140,0,0.15); transform:scale(1.05); }
+    .code-submit-btn { width:100%; padding:15px; border:none; border-radius:14px; background:linear-gradient(135deg,var(--c-sun),#FFAD33); color:white; font-family:var(--font-body); font-size:1.05rem; font-weight:700; cursor:pointer; transition:all 0.3s ease; box-shadow:0 4px 16px rgba(255,159,28,0.3); }
+    .code-submit-btn:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(255,159,28,0.4); }
+    .code-submit-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+    .code-error { text-align:center; color:var(--c-pink); font-size:0.9rem; font-weight:600; display:none; margin-top:10px; }
+    .code-error.show { display:block; animation:shake 0.4s ease; }
+
+    /* === 先生メニュー：教室一覧 === */
+    .room-list { max-height:400px; overflow-y:auto; }
+    .room-card { background:var(--c-cream); border-radius:16px; padding:16px; margin-bottom:12px; border:2px solid transparent; transition:all 0.2s ease; }
+    .room-card:hover { border-color:var(--c-sun-light); }
+    .room-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .room-card-name { font-weight:700; font-size:1rem; color:var(--c-dark); }
+    .room-card-code { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:8px; background:linear-gradient(135deg,var(--c-sun),var(--c-sun-light)); color:white; font-family:var(--font-display); font-size:0.95rem; font-weight:700; letter-spacing:2px; }
+    .room-card-apps { font-size:0.82rem; color:var(--c-gray); margin-bottom:10px; }
+    .room-card-actions { display:flex; gap:8px; }
+    .room-card-btn { padding:8px 14px; border-radius:10px; border:none; font-family:var(--font-body); font-size:0.82rem; font-weight:700; cursor:pointer; transition:all 0.2s ease; }
+    .room-card-btn.edit { background:var(--c-sky-light); color:var(--c-sky); }
+    .room-card-btn.edit:hover { background:var(--c-sky); color:white; }
+    .room-card-btn.del { background:var(--c-red-light); color:var(--c-red); }
+    .room-card-btn.del:hover { background:var(--c-red); color:white; }
+    .room-card-btn.copy { background:var(--c-green-light); color:var(--c-green); }
+    .room-card-btn.copy:hover { background:var(--c-green); color:white; }
+    .room-create-btn { width:100%; padding:14px; border:3px dashed var(--c-light-gray); border-radius:16px; background:transparent; font-family:var(--font-body); font-size:0.95rem; font-weight:700; color:var(--c-gray); cursor:pointer; transition:all 0.2s ease; margin-top:8px; }
+    .room-create-btn:hover { border-color:var(--c-sun); color:var(--c-sun); background:rgba(255,140,0,0.04); }
+
+    /* === 先生メニュー：アプリ選択カード === */
+    .app-select-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:12px; max-height:360px; overflow-y:auto; padding:4px; }
+    .app-select-card { position:relative; border-radius:14px; overflow:hidden; border:3px solid var(--c-light-gray); background:var(--c-white); cursor:pointer; transition:all 0.25s ease; user-select:none; }
+    .app-select-card:hover { border-color:var(--c-sun-light); transform:translateY(-3px); box-shadow:0 4px 14px rgba(0,0,0,0.08); }
+    .app-select-card.selected { border-color:var(--c-sun); box-shadow:0 4px 16px rgba(255,140,0,0.25); }
+    .app-select-card.selected::after { content:'✅'; position:absolute; top:6px; right:6px; font-size:1.2rem; filter:drop-shadow(0 1px 3px rgba(0,0,0,0.2)); }
+    .app-select-img { width:100%; height:90px; object-fit:cover; display:block; }
+    .app-select-placeholder { width:100%; height:90px; display:flex; align-items:center; justify-content:center; font-size:2.2rem; background:linear-gradient(135deg,#FFE0B2,#FFECD2); }
+    .app-select-name { padding:8px 10px; font-size:0.78rem; font-weight:700; color:var(--c-dark); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .select-all-row { display:flex; gap:10px; margin-bottom:12px; }
+    .select-all-btn { padding:8px 16px; border-radius:10px; border:2px solid var(--c-light-gray); background:var(--c-white); font-family:var(--font-body); font-size:0.82rem; font-weight:600; color:var(--c-gray); cursor:pointer; transition:all 0.2s ease; }
+    .select-all-btn:hover { border-color:var(--c-sun); color:var(--c-sun); }
+
+    @media (max-width:640px) {
+      .hero { padding:44px 20px 36px; }
+      .app-grid { grid-template-columns:1fr; gap:18px; }
+      .modal-box { padding:24px; }
+      .admin-tab { font-size:0.75rem; padding:10px 4px; }
+      .main-layout { flex-direction:column; padding:0 16px 40px; }
+      .sidebar { width:100%; position:static; order:-1; }
+      .sidebar-box { padding:16px; }
+      .sidebar-title { font-size:0.92rem; margin-bottom:12px; }
+      .rank-items-wrap { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
+      .rank-item { flex:0 0 auto; min-width:140px; margin-bottom:0; }
+      .app-select-grid { grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:8px; }
+      .app-select-img, .app-select-placeholder { height:70px; }
+      .code-char-input { width:46px; height:56px; font-size:1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== 教室モード ゲート画面 ===== -->
+  <div id="class-gate" style="display:none;">
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(170deg,#FFF6ED 0%,#FFE0B2 30%,#FFECD2 60%,#FFF3E0 100%);padding:24px;">
+      <div style="background:var(--c-white);border-radius:28px;padding:40px 32px;max-width:420px;width:100%;box-shadow:0 24px 60px rgba(60,30,0,0.12);text-align:center;">
+        <div style="font-size:3.5rem;margin-bottom:16px;">🏫</div>
+        <h1 style="font-family:var(--font-display);font-size:1.8rem;color:#FF6D00;margin-bottom:8px;">GIGAパーク！</h1>
+        <p style="color:var(--c-gray);font-size:1rem;margin-bottom:28px;font-weight:600;">先生からおしえてもらった<br>コードをいれてね</p>
+        <div class="code-input-wrap" id="gate-code-wrap"></div>
+        <button class="code-submit-btn" id="gate-submit-btn" onclick="submitGateCode()" disabled style="margin-top:8px;">🚀 はいる！</button>
+        <div class="code-error" id="gate-code-error" style="margin-top:12px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== メインコンテンツ（通常モード or コード入力後） ===== -->
+  <div id="main-content">
+
+  <!-- ナビバー -->
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <div class="navbar-brand">🎮 GIGAパーク</div>
+      <div class="navbar-actions">
+        <button class="btn-icon" onclick="scrollToTop()" title="トップへ戻る">↑</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 教室モードバナー -->
+  <div class="room-banner" id="room-banner">
+    <div class="room-banner-inner">
+      <span>🏫 <span id="room-banner-name"></span> のアプリ</span>
+      <button class="room-exit-btn" onclick="exitRoomMode()">✕ もどる</button>
+    </div>
+  </div>
+
+  <!-- ヒーロー -->
+  <section class="hero" id="hero-section">
+    <h1 class="hero-title">GIGAパーク！</h1>
+    <p class="hero-sub">🎮 楽しく学べるウェブアプリがいっぱい！</p>
+    <p class="hero-sub" id="web-note" style="font-size:0.95rem;margin-top:10px;">このページは Web版です。【Web版】の アプリは Google が つかえない 学校でも ひらけます。</p>
+  </section>
+  <div class="wave-divider" id="wave-divider">
+    <svg viewBox="0 0 1440 50" preserveAspectRatio="none">
+      <path fill="#FFF6ED" d="M0,0 C360,50 1080,50 1440,0 L1440,50 L0,50 Z"></path>
+    </svg>
+  </div>
+
+  <!-- タグフィルター -->
+  <div class="filter-bar" id="filter-bar">
+    <span class="filter-label">🏷 しぼりこみ：</span>
+    <button class="tag-btn active" data-tag="all">すべて</button>
+  </div>
+
+  <!-- メインレイアウト（グリッド＋サイドバー） -->
+  <div class="main-layout">
+    <div class="grid-area">
+      <div id="app-grid" class="app-grid">
+        <div class="loader"><div class="loader-spinner"></div>よみこみ中...</div>
+      </div>
+    </div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-box">
+        <div class="sidebar-title">🔥 人気ベスト3（11/24 時点）</div>
+        <div id="ranking-list" class="rank-items-wrap">
+          <div class="rank-empty">データを読み込み中...</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- フッター -->
+  <footer class="footer">
+    <div class="footer-notice">
+      <strong>⚠️ おしらせ</strong>
+      <p>画像ホスティングサービスを利用しているため、自治体によっては画像が表示されない場合があります。</p>
+    </div>
+    <div class="footer-copy">© 2025 GIGAパーク！ All Rights Reserved</div>
+    <div class="footer-links" id="footer-links">
+      <span class="admin-link" style="cursor:default;">教室モード・先生メニュー・管理者メニューは Google版で 使えます</span>
+    </div>
+  </footer>
+
+  <!-- ===== 子ども用 コード入力モーダル ===== -->
+  <div class="modal-overlay" id="code-modal">
+    <div class="modal-box">
+      <div class="modal-title">🔑 コードをいれよう</div>
+      <p style="text-align:center;color:var(--c-gray);margin-bottom:20px;font-size:0.95rem;">先生からおしえてもらった<br>4もじのコードをいれてね</p>
+      <div class="code-input-wrap" id="code-input-wrap"></div>
+      <button class="code-submit-btn" id="code-submit-btn" onclick="submitCode()" disabled>🚀 はいる！</button>
+      <div class="code-error" id="code-error"></div>
+      <div style="margin-top:16px;">
+        <button class="btn-cancel" style="width:100%" onclick="closeCodeModal()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 管理者パスワードモーダル（8桁） ===== -->
+  <div class="modal-overlay" id="pw-modal">
+    <div class="modal-box">
+      <div class="modal-title">🔐 管理者ログイン</div>
+      <p style="text-align:center;color:var(--c-gray);margin-bottom:18px;font-size:0.92rem;">8桁の数字を入力してください</p>
+      <div class="pw-dots" id="pw-dots"></div>
+      <div class="numpad">
+        <button class="num-btn" onclick="enterNum('1')">1</button>
+        <button class="num-btn" onclick="enterNum('2')">2</button>
+        <button class="num-btn" onclick="enterNum('3')">3</button>
+        <button class="num-btn" onclick="enterNum('4')">4</button>
+        <button class="num-btn" onclick="enterNum('5')">5</button>
+        <button class="num-btn" onclick="enterNum('6')">6</button>
+        <button class="num-btn" onclick="enterNum('7')">7</button>
+        <button class="num-btn" onclick="enterNum('8')">8</button>
+        <button class="num-btn" onclick="enterNum('9')">9</button>
+        <button class="num-btn accent" onclick="clearPw()">C</button>
+        <button class="num-btn" onclick="enterNum('0')">0</button>
+        <button class="num-btn accent" onclick="backspacePw()">⌫</button>
+      </div>
+      <button class="btn-cancel" style="width:100%" onclick="closePasswordModal()">キャンセル</button>
+      <div class="pw-error" id="pw-error">パスワードがちがいます 🙅</div>
+    </div>
+  </div>
+
+  <!-- ===== 先生用パスワードモーダル（4桁） ===== -->
+  <div class="modal-overlay" id="teacher-pw-modal">
+    <div class="modal-box">
+      <div class="modal-title">🏫 先生メニュー</div>
+      <p style="text-align:center;color:var(--c-gray);margin-bottom:18px;font-size:0.92rem;">4桁のパスワードを入力してください</p>
+      <div class="pw-dots" id="teacher-pw-dots"></div>
+      <div class="numpad">
+        <button class="num-btn" onclick="enterTeacherNum('1')">1</button>
+        <button class="num-btn" onclick="enterTeacherNum('2')">2</button>
+        <button class="num-btn" onclick="enterTeacherNum('3')">3</button>
+        <button class="num-btn" onclick="enterTeacherNum('4')">4</button>
+        <button class="num-btn" onclick="enterTeacherNum('5')">5</button>
+        <button class="num-btn" onclick="enterTeacherNum('6')">6</button>
+        <button class="num-btn" onclick="enterTeacherNum('7')">7</button>
+        <button class="num-btn" onclick="enterTeacherNum('8')">8</button>
+        <button class="num-btn" onclick="enterTeacherNum('9')">9</button>
+        <button class="num-btn accent" onclick="clearTeacherPw()">C</button>
+        <button class="num-btn" onclick="enterTeacherNum('0')">0</button>
+        <button class="num-btn accent" onclick="backspaceTeacherPw()">⌫</button>
+      </div>
+      <button class="btn-cancel" style="width:100%" onclick="closeTeacherPwModal()">キャンセル</button>
+      <div class="pw-error" id="teacher-pw-error">パスワードがちがいます 🙅</div>
+    </div>
+  </div>
+
+  <!-- ===== 管理パネルモーダル ===== -->
+  <div class="modal-overlay" id="admin-modal">
+    <div class="modal-box">
+      <div class="modal-title">⚙️ 管理パネル</div>
+      <div class="admin-tabs">
+        <button class="admin-tab active" onclick="switchTab('add')">➕ 追加</button>
+        <button class="admin-tab" onclick="switchTab('edit')">📋 編集</button>
+        <button class="admin-tab" onclick="switchTab('tag')">🏷 タグ</button>
+        <button class="admin-tab" onclick="switchTab('log')">📊 ログ</button>
+      </div>
+
+      <!-- ➕ アプリ追加 -->
+      <div class="admin-section active" id="section-add">
+        <div class="form-group">
+          <label class="form-label">アプリのなまえ *</label>
+          <input type="text" id="f-title" class="form-input" placeholder="例：九九マスター">
+        </div>
+        <div class="form-group">
+          <label class="form-label">せつめい</label>
+          <textarea id="f-desc" class="form-textarea" rows="2" placeholder="どんなアプリ？"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">アプリのURL *</label>
+          <input type="url" id="f-url" class="form-input" placeholder="https://...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">画像のURL</label>
+          <input type="url" id="f-image" class="form-input" placeholder="https://...">
+          <div class="form-hint">なくてもOK！自動でアイコンが表示されます</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">タグ（クリックで選択）</label>
+          <div class="tag-select-wrap" id="add-tag-select"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-cancel" onclick="closeAdminModal()">とじる</button>
+          <button class="btn-submit" id="add-submit-btn" onclick="submitAddApp()">追加する</button>
+        </div>
+      </div>
+
+      <!-- 📋 アプリ編集 -->
+      <div class="admin-section" id="section-edit">
+        <div id="edit-form-area" style="display:none;"></div>
+        <div id="app-list-area" class="app-list"></div>
+        <div class="btn-row" style="margin-top:12px;">
+          <button class="btn-cancel" style="flex:1" onclick="closeAdminModal()">とじる</button>
+        </div>
+      </div>
+
+      <!-- 🏷 タグ管理 -->
+      <div class="admin-section" id="section-tag">
+        <p style="font-size:0.85rem;color:var(--c-gray);margin-bottom:12px;">タグを追加・削除できます。削除するとアプリからもそのタグが外れます。</p>
+        <div class="tag-manage-list" id="tag-manage-list"></div>
+        <div class="tag-add-row">
+          <input type="text" id="new-tag-input" class="form-input" placeholder="新しいタグ名">
+          <button class="tag-add-btn" onclick="handleAddTag()">追加</button>
+        </div>
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn-cancel" style="flex:1" onclick="closeAdminModal()">とじる</button>
+        </div>
+      </div>
+
+      <!-- 📊 操作ログ -->
+      <div class="admin-section" id="section-log">
+        <p style="font-size:0.85rem;color:var(--c-gray);margin-bottom:12px;">先生メニューの操作履歴（最新100件）</p>
+        <div id="log-list" style="max-height:400px;overflow-y:auto;"></div>
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn-cancel" style="flex:1" onclick="closeAdminModal()">とじる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="teacher-name-modal">
+    <div class="modal-box" style="max-width:400px;">
+      <div class="modal-title">🏫 お名前をおしえてください</div>
+      <p style="text-align:center;color:var(--c-gray);margin-bottom:18px;font-size:0.88rem;">ニックネームもOKです。</p>
+      <div class="form-group">
+        <input type="text" id="teacher-name-input" class="form-input" placeholder="例：田中" style="text-align:center;font-size:1.1rem;">
+      </div>
+      <div class="btn-row">
+        <button class="btn-cancel" onclick="closeTeacherNameModal()">キャンセル</button>
+        <button class="btn-submit" onclick="submitTeacherName()">すすむ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 先生メニューモーダル ===== -->
+  <div class="modal-overlay" id="teacher-modal">
+    <div class="modal-box wide">
+      <div class="modal-title">🏫 先生メニュー ー 教室管理</div>
+
+      <!-- 教室一覧ビュー -->
+      <div id="teacher-list-view">
+        <div class="room-list" id="room-list"></div>
+        <button class="room-create-btn" onclick="openRoomForm(null)">＋ 新しい教室をつくる</button>
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn-cancel" style="flex:1" onclick="closeTeacherModal()">とじる</button>
+        </div>
+      </div>
+
+      <!-- 教室作成・編集ビュー -->
+      <div id="teacher-form-view" style="display:none;">
+        <div class="form-group">
+          <label class="form-label">教室のなまえ *</label>
+          <input type="text" id="room-name-input" class="form-input" placeholder="例：3年1組 算数">
+        </div>
+        <div class="form-group">
+          <label class="form-label">📱 使えるアプリをえらぶ *</label>
+          <div class="select-all-row">
+            <button class="select-all-btn" onclick="roomSelectAll()">全選択</button>
+            <button class="select-all-btn" onclick="roomDeselectAll()">全解除</button>
+            <span style="font-size:0.82rem;color:var(--c-gray);display:flex;align-items:center;" id="room-select-count">0個 選択中</span>
+          </div>
+          <div class="app-select-grid" id="room-app-grid"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-cancel" onclick="closeRoomForm()">もどる</button>
+          <button class="btn-submit" id="room-save-btn" onclick="submitRoom()">保存する</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /main-content -->
+
+  <!-- トースト -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ========================================
+    // 起動モード（GASテンプレートから渡される）
+    // ========================================
+    const LAUNCH_MODE = '';
+    const IS_CLASS_MODE = (LAUNCH_MODE === 'class');
+    const SCRIPT_URL = '';
+
+    // ========================================
+    // 状態
+    // ========================================
+    let apps = [];
+    let masterTags = [];
+    let activeTag = 'all';
+    let password = '';
+    let storedPw = '';
+    let addSelectedTags = new Set();
+    let editingAppId = null;
+    let editSelectedTags = new Set();
+
+    // 先生メニュー用
+    let teacherPw = '';
+    let storedTeacherPw = '';
+    let teacherName = '';
+    let rooms = [];
+    let editingRoomCode = null;
+    let roomSelectedApps = new Set();
+
+    // 教室モード用
+    let currentRoom = null;
+    let roomRefreshTimer = null;
+
+    // ========================================
+    // 初期化
+    // ========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      initDots();
+      initTeacherDots();
+      initCodeInputs();
+
+      if (IS_CLASS_MODE) {
+        // 教室モード：ゲート画面を表示、メインコンテンツを隠す
+        document.getElementById('class-gate').style.display = 'block';
+        document.getElementById('main-content').style.display = 'none';
+        initGateCodeInputs();
+      }
+
+      loadData();
+    });
+
+    function loadData() {
+      google.script.run
+        .withSuccessHandler(data => {
+          apps = data.apps;
+          masterTags = data.tags;
+          renderFilterTags();
+          renderApps();
+          renderRanking();
+        })
+        .withFailureHandler(() => {
+          document.getElementById('app-grid').innerHTML = '<div class="empty-state"><div class="empty-state-icon">😢</div><div class="empty-state-text">読み込みに失敗しました。リロードしてみてね。</div></div>';
+        })
+        .getInitialData();
+    }
+
+    // ========================================
+    // フィルター用タグ
+    // ========================================
+    function renderFilterTags() {
+      const bar = document.getElementById('filter-bar');
+      bar.innerHTML = '<span class="filter-label">🏷 しぼりこみ：</span>';
+      bar.appendChild(makeFilterBtn('すべて', 'all'));
+      masterTags.forEach(tag => bar.appendChild(makeFilterBtn(tag, tag)));
+    }
+    function makeFilterBtn(label, tag) {
+      const btn = document.createElement('button');
+      btn.className = 'tag-btn' + (tag === activeTag ? ' active' : '');
+      btn.textContent = label;
+      btn.addEventListener('click', () => {
+        activeTag = tag;
+        document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderApps();
+      });
+      return btn;
+    }
+
+    // ========================================
+    // アプリ表示（メイン画面）
+    // ========================================
+    function renderApps() {
+      const grid = document.getElementById('app-grid');
+      grid.innerHTML = '';
+
+      // 教室モードの場合、許可されたアプリのみ
+      let pool = apps;
+      if (currentRoom) {
+        const allowedIds = currentRoom.app_ids.split(',').map(s => s.trim());
+        pool = apps.filter(a => allowedIds.includes(a.id));
+      }
+
+      const filtered = activeTag === 'all' ? pool : pool.filter(a => a.tags && a.tags.split(',').map(t=>t.trim()).includes(activeTag));
+      if (filtered.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">' + (currentRoom ? 'この教室には表示できるアプリがないよ' : 'このタグのアプリはまだないよ') + '</div></div>';
+        return;
+      }
+      const emojis = ['🎮','🎲','🎯','🎪','📚','✏️','🧩','🎨','🔬','🌟'];
+      const now = new Date();
+      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+      filtered.forEach((app, i) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.animationDelay = `${i * 0.06}s`;
+        const hasImg = app.image_url && app.image_url.trim();
+        const emoji = emojis[i % emojis.length];
+        const tagsHtml = app.tags ? app.tags.split(',').map(t=>t.trim()).filter(Boolean).map(t=>`<span class="card-tag">${t}</span>`).join('') : '';
+        let newBadge = '';
+        if (app.created_at) {
+          const created = new Date(app.created_at);
+          if (now - created < SEVEN_DAYS) { newBadge = '<div class="new-ribbon">✨ NEW</div>'; }
+        }
+        card.innerHTML = `
+          ${newBadge}
+          <div class="card-img-wrap">
+            ${hasImg
+              ? `<img src="${app.image_url}" alt="${app.title}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="card-placeholder" style="display:none">${emoji}</div>`
+              : `<div class="card-placeholder">${emoji}</div>`}
+          </div>
+          <div class="card-body">
+            <div class="card-title">${app.title}</div>
+            <div class="card-desc">${app.description || ''}</div>
+            ${tagsHtml ? `<div class="card-tags">${tagsHtml}</div>` : ''}
+            <a href="${app.url}" target="_blank" rel="noopener noreferrer" class="play-btn" data-id="${app.id}">🚀 プレイする</a>
+          </div>`;
+        card.querySelector('.play-btn').addEventListener('click', () => handlePlayClick(app.id));
+        grid.appendChild(card);
+      });
+    }
+
+    // ========================================
+    // 教室モード（子ども用）
+    // ========================================
+    function initCodeInputs() {
+      const wrap = document.getElementById('code-input-wrap');
+      wrap.innerHTML = '';
+      for (let i = 0; i < 4; i++) {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.maxLength = 1;
+        inp.className = 'code-char-input';
+        inp.dataset.idx = i;
+        inp.autocomplete = 'off';
+        inp.addEventListener('input', (e) => {
+          e.target.value = e.target.value.toUpperCase();
+          if (e.target.value && i < 3) {
+            wrap.children[i + 1].focus();
+          }
+          updateCodeSubmitBtn();
+        });
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Backspace' && !e.target.value && i > 0) {
+            wrap.children[i - 1].focus();
+          }
+          if (e.key === 'Enter') {
+            submitCode();
+          }
+        });
+        // ペースト対応
+        inp.addEventListener('paste', (e) => {
+          e.preventDefault();
+          const pasted = (e.clipboardData.getData('text') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          for (let j = 0; j < 4 && j < pasted.length; j++) {
+            wrap.children[j].value = pasted[j];
+          }
+          const focusIdx = Math.min(pasted.length, 3);
+          wrap.children[focusIdx].focus();
+          updateCodeSubmitBtn();
+        });
+        wrap.appendChild(inp);
+      }
+    }
+    function updateCodeSubmitBtn() {
+      const inputs = document.querySelectorAll('.code-char-input');
+      let code = '';
+      inputs.forEach(inp => code += inp.value);
+      document.getElementById('code-submit-btn').disabled = code.length < 4;
+    }
+    function getCodeValue() {
+      const inputs = document.querySelectorAll('.code-char-input');
+      let code = '';
+      inputs.forEach(inp => code += inp.value);
+      return code.toUpperCase();
+    }
+    function openCodeModal() {
+      initCodeInputs();
+      document.getElementById('code-error').classList.remove('show');
+      document.getElementById('code-modal').classList.add('open');
+      setTimeout(() => document.querySelector('.code-char-input').focus(), 300);
+    }
+    function closeCodeModal() {
+      document.getElementById('code-modal').classList.remove('open');
+    }
+    function submitCode() {
+      const code = getCodeValue();
+      if (code.length < 4) return;
+      const btn = document.getElementById('code-submit-btn');
+      btn.disabled = true; btn.textContent = 'さがしています...';
+      google.script.run.withSuccessHandler(r => {
+        btn.disabled = false; btn.textContent = '🚀 はいる！';
+        if (r.success) {
+          currentRoom = r.room;
+          closeCodeModal();
+          enterRoomMode();
+        } else {
+          const err = document.getElementById('code-error');
+          err.textContent = r.message || 'コードが見つかりませんでした 😢';
+          err.classList.add('show');
+        }
+      }).withFailureHandler(() => {
+        btn.disabled = false; btn.textContent = '🚀 はいる！';
+        const err = document.getElementById('code-error');
+        err.textContent = 'エラーが起きました。もう一度ためしてね 😢';
+        err.classList.add('show');
+      }).lookupRoom(code);
+    }
+    function enterRoomMode() {
+      document.getElementById('room-banner-name').textContent = currentRoom.room_name;
+      document.getElementById('room-banner').classList.add('show');
+      // ヒーロー・フィルター・サイドバーを非表示
+      document.getElementById('hero-section').style.display = 'none';
+      document.getElementById('wave-divider').style.display = 'none';
+      document.getElementById('filter-bar').style.display = 'none';
+      document.getElementById('sidebar').style.display = 'none';
+      // 教室モード時はフッターリンクとコードボタンを隠す
+      if (IS_CLASS_MODE) {
+        document.getElementById('footer-links').style.display = 'none';
+      }
+      activeTag = 'all';
+      renderApps();
+      showToast('🏫 ' + currentRoom.room_name + ' にはいりました！');
+      scrollToTop();
+      // 1分ごとに教室データを自動チェック
+      startRoomRefresh();
+    }
+    function exitRoomMode() {
+      stopRoomRefresh();
+      currentRoom = null;
+      document.getElementById('room-banner').classList.remove('show');
+      if (IS_CLASS_MODE) {
+        // 教室モード：ゲート画面に戻す
+        document.getElementById('main-content').style.display = 'none';
+        document.getElementById('class-gate').style.display = 'block';
+        initGateCodeInputs();
+        document.getElementById('gate-code-error').classList.remove('show');
+      } else {
+        // 通常モード：全アプリ表示に戻す
+        document.getElementById('hero-section').style.display = '';
+        document.getElementById('wave-divider').style.display = '';
+        document.getElementById('filter-bar').style.display = '';
+        document.getElementById('sidebar').style.display = '';
+        activeTag = 'all';
+        renderApps();
+      }
+    }
+
+    // ========================================
+    // 教室データ自動更新（1分ごと）
+    // ========================================
+    function startRoomRefresh() {
+      stopRoomRefresh();
+      roomRefreshTimer = setInterval(() => {
+        if (!currentRoom) return;
+        google.script.run.withSuccessHandler(r => {
+          if (!currentRoom) return;
+          if (r.success) {
+            const oldAppIds = currentRoom.app_ids;
+            currentRoom = r.room;
+            // アプリが変わっていたら画面を更新
+            if (oldAppIds !== r.room.app_ids) {
+              renderApps();
+              showToast('📱 先生がアプリを更新しました！');
+            }
+          }
+        }).withFailureHandler(() => {}).lookupRoom(currentRoom.code);
+      }, 60000); // 60秒 = 1分
+    }
+    function stopRoomRefresh() {
+      if (roomRefreshTimer) {
+        clearInterval(roomRefreshTimer);
+        roomRefreshTimer = null;
+      }
+    }
+
+    // ========================================
+    // 教室モード ゲート画面（?mode=class 用）
+    // ========================================
+    function initGateCodeInputs() {
+      const wrap = document.getElementById('gate-code-wrap');
+      wrap.innerHTML = '';
+      for (let i = 0; i < 4; i++) {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.maxLength = 1;
+        inp.className = 'code-char-input gate-char';
+        inp.dataset.idx = i;
+        inp.autocomplete = 'off';
+        inp.addEventListener('input', (e) => {
+          e.target.value = e.target.value.toUpperCase();
+          if (e.target.value && i < 3) wrap.children[i + 1].focus();
+          updateGateSubmitBtn();
+        });
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Backspace' && !e.target.value && i > 0) wrap.children[i - 1].focus();
+          if (e.key === 'Enter') submitGateCode();
+        });
+        inp.addEventListener('paste', (e) => {
+          e.preventDefault();
+          const pasted = (e.clipboardData.getData('text') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          for (let j = 0; j < 4 && j < pasted.length; j++) wrap.children[j].value = pasted[j];
+          const focusIdx = Math.min(pasted.length, 3);
+          wrap.children[focusIdx].focus();
+          updateGateSubmitBtn();
+        });
+        wrap.appendChild(inp);
+      }
+      setTimeout(() => wrap.children[0].focus(), 400);
+    }
+    function updateGateSubmitBtn() {
+      const inputs = document.querySelectorAll('.gate-char');
+      let code = '';
+      inputs.forEach(inp => code += inp.value);
+      document.getElementById('gate-submit-btn').disabled = code.length < 4;
+    }
+    function submitGateCode() {
+      const inputs = document.querySelectorAll('.gate-char');
+      let code = '';
+      inputs.forEach(inp => code += inp.value);
+      code = code.toUpperCase();
+      if (code.length < 4) return;
+
+      const btn = document.getElementById('gate-submit-btn');
+      btn.disabled = true; btn.textContent = 'さがしています...';
+      google.script.run.withSuccessHandler(r => {
+        btn.disabled = false; btn.textContent = '🚀 はいる！';
+        if (r.success) {
+          currentRoom = r.room;
+          // ゲートを隠してメインコンテンツを表示（教室モードで）
+          document.getElementById('class-gate').style.display = 'none';
+          document.getElementById('main-content').style.display = '';
+          enterRoomMode();
+        } else {
+          const err = document.getElementById('gate-code-error');
+          err.textContent = r.message || 'コードが見つかりませんでした 😢';
+          err.classList.add('show');
+        }
+      }).withFailureHandler(() => {
+        btn.disabled = false; btn.textContent = '🚀 はいる！';
+        const err = document.getElementById('gate-code-error');
+        err.textContent = 'エラーが起きました。もう一度ためしてね 😢';
+        err.classList.add('show');
+      }).lookupRoom(code);
+    }
+
+    // ========================================
+    // 管理者パスワードモーダル（8桁）
+    // ========================================
+    function initDots() {
+      const w = document.getElementById('pw-dots'); w.innerHTML = '';
+      for (let i=0;i<8;i++){const d=document.createElement('span');d.className='pw-dot';w.appendChild(d);}
+    }
+    function updateDots() { document.querySelectorAll('#pw-dots .pw-dot').forEach((d,i)=>d.classList.toggle('filled',i<password.length)); }
+    function openPasswordModal() { password=''; updateDots(); document.getElementById('pw-error').classList.remove('show'); document.getElementById('pw-modal').classList.add('open'); }
+    function closePasswordModal() { document.getElementById('pw-modal').classList.remove('open'); password=''; }
+    function enterNum(n) { if(password.length>=8)return; password+=n; updateDots(); document.getElementById('pw-error').classList.remove('show'); if(password.length===8)setTimeout(checkPw,200); }
+    function clearPw() { password=''; updateDots(); document.getElementById('pw-error').classList.remove('show'); }
+    function backspacePw() { password=password.slice(0,-1); updateDots(); }
+    function checkPw() {
+      const pw = password;
+      google.script.run.withSuccessHandler(ok => {
+        if (ok) { storedPw=pw; closePasswordModal(); openAdminModal(); }
+        else { document.getElementById('pw-error').classList.add('show'); password=''; updateDots(); }
+      }).withFailureHandler(() => { document.getElementById('pw-error').classList.add('show'); password=''; updateDots(); }).verifyPassword(pw);
+    }
+
+    // ========================================
+    // 先生用パスワードモーダル（4桁）
+    // ========================================
+    function initTeacherDots() {
+      const w = document.getElementById('teacher-pw-dots'); w.innerHTML = '';
+      for (let i=0;i<4;i++){const d=document.createElement('span');d.className='pw-dot';w.appendChild(d);}
+    }
+    function updateTeacherDots() { document.querySelectorAll('#teacher-pw-dots .pw-dot').forEach((d,i)=>d.classList.toggle('filled',i<teacherPw.length)); }
+    function openTeacherPwModal() { teacherPw=''; updateTeacherDots(); document.getElementById('teacher-pw-error').classList.remove('show'); document.getElementById('teacher-pw-modal').classList.add('open'); }
+    function closeTeacherPwModal() { document.getElementById('teacher-pw-modal').classList.remove('open'); teacherPw=''; }
+    function enterTeacherNum(n) { if(teacherPw.length>=4)return; teacherPw+=n; updateTeacherDots(); document.getElementById('teacher-pw-error').classList.remove('show'); if(teacherPw.length===4)setTimeout(checkTeacherPw,200); }
+    function clearTeacherPw() { teacherPw=''; updateTeacherDots(); document.getElementById('teacher-pw-error').classList.remove('show'); }
+    function backspaceTeacherPw() { teacherPw=teacherPw.slice(0,-1); updateTeacherDots(); }
+    function checkTeacherPw() {
+      const pw = teacherPw;
+      google.script.run.withSuccessHandler(ok => {
+        if (ok) { storedTeacherPw=pw; closeTeacherPwModal(); openTeacherNameModal(); }
+        else { document.getElementById('teacher-pw-error').classList.add('show'); teacherPw=''; updateTeacherDots(); }
+      }).withFailureHandler(() => { document.getElementById('teacher-pw-error').classList.add('show'); teacherPw=''; updateTeacherDots(); }).verifyTeacherPassword(pw);
+    }
+
+    // ========================================
+    // 先生名入力
+    // ========================================
+    function openTeacherNameModal() {
+      document.getElementById('teacher-name-input').value = teacherName || '';
+      document.getElementById('teacher-name-modal').classList.add('open');
+      setTimeout(() => document.getElementById('teacher-name-input').focus(), 300);
+    }
+    function closeTeacherNameModal() {
+      document.getElementById('teacher-name-modal').classList.remove('open');
+    }
+    function submitTeacherName() {
+      const name = document.getElementById('teacher-name-input').value.trim();
+      if (!name) { showToast('お名前を入力してください ✍️'); return; }
+      teacherName = name;
+      closeTeacherNameModal();
+      openTeacherModal();
+    }
+
+    // ========================================
+    // 先生メニューモーダル
+    // ========================================
+    function openTeacherModal() {
+      document.getElementById('teacher-list-view').style.display = '';
+      document.getElementById('teacher-form-view').style.display = 'none';
+      document.getElementById('teacher-modal').classList.add('open');
+      loadRooms();
+    }
+    function closeTeacherModal() {
+      document.getElementById('teacher-modal').classList.remove('open');
+      editingRoomCode = null;
+    }
+    function loadRooms() {
+      google.script.run.withSuccessHandler(data => {
+        rooms = data;
+        renderRoomList();
+      }).withFailureHandler(() => {
+        showToast('教室データの読み込みに失敗しました 😢');
+      }).getRooms();
+    }
+    function renderRoomList() {
+      const list = document.getElementById('room-list');
+      list.innerHTML = '';
+      if (!rooms.length) {
+        list.innerHTML = '<div class="empty-state" style="padding:30px"><div class="empty-state-icon">🏫</div><div class="empty-state-text">まだ教室がありません<br>「＋ 新しい教室をつくる」から作りましょう！</div></div>';
+        return;
+      }
+      rooms.forEach(room => {
+        // アプリ名を取得
+        const appIds = room.app_ids ? room.app_ids.split(',').map(s => s.trim()) : [];
+        const appNames = appIds.map(id => {
+          const a = apps.find(ap => ap.id === id);
+          return a ? a.title : id;
+        });
+        const appText = appNames.length > 3 ? appNames.slice(0, 3).join('、') + ' ほか' + (appNames.length - 3) + '個' : appNames.join('、');
+
+        const card = document.createElement('div');
+        card.className = 'room-card';
+        card.innerHTML = `
+          <div class="room-card-header">
+            <div class="room-card-name">🏷 ${escHtml(room.room_name)}</div>
+            <div class="room-card-code">🔑 ${room.code}</div>
+          </div>
+          <div class="room-card-apps">📱 ${escHtml(appText)}（${appIds.length}個）</div>
+          <div class="room-card-actions">
+            <button class="room-card-btn copy">📋 子ども用URLをコピー</button>
+            <button class="room-card-btn edit">✏️ 編集</button>
+            <button class="room-card-btn del">🗑 削除</button>
+          </div>`;
+        card.querySelector('.copy').addEventListener('click', () => copyClassUrl());
+        card.querySelector('.edit').addEventListener('click', () => openRoomForm(room.code));
+        card.querySelector('.del').addEventListener('click', () => handleDeleteRoom(room.code, room.room_name));
+        list.appendChild(card);
+      });
+    }
+
+    // ========================================
+    // 先生メニュー：教室作成・編集フォーム
+    // ========================================
+    function openRoomForm(code) {
+      editingRoomCode = code;
+      roomSelectedApps = new Set();
+
+      if (code) {
+        const room = rooms.find(r => r.code === code);
+        if (room) {
+          document.getElementById('room-name-input').value = room.room_name;
+          room.app_ids.split(',').forEach(id => { if (id.trim()) roomSelectedApps.add(id.trim()); });
+        }
+      } else {
+        document.getElementById('room-name-input').value = '';
+      }
+
+      renderRoomAppGrid();
+      updateRoomSelectCount();
+      document.getElementById('teacher-list-view').style.display = 'none';
+      document.getElementById('teacher-form-view').style.display = '';
+      document.getElementById('room-save-btn').textContent = code ? '💾 保存する' : '✨ 教室をつくる';
+    }
+    function closeRoomForm() {
+      editingRoomCode = null;
+      document.getElementById('teacher-form-view').style.display = 'none';
+      document.getElementById('teacher-list-view').style.display = '';
+    }
+    function renderRoomAppGrid() {
+      const grid = document.getElementById('room-app-grid');
+      grid.innerHTML = '';
+      const emojis = ['🎮','🎲','🎯','🎪','📚','✏️','🧩','🎨','🔬','🌟'];
+      apps.forEach((app, i) => {
+        const card = document.createElement('div');
+        const isSelected = roomSelectedApps.has(app.id);
+        card.className = 'app-select-card' + (isSelected ? ' selected' : '');
+        const hasImg = app.image_url && app.image_url.trim();
+        card.innerHTML = `
+          ${hasImg
+            ? `<img class="app-select-img" src="${app.image_url}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" loading="lazy"><div class="app-select-placeholder" style="display:none">${emojis[i % emojis.length]}</div>`
+            : `<div class="app-select-placeholder">${emojis[i % emojis.length]}</div>`}
+          <div class="app-select-name">${escHtml(app.title)}</div>`;
+        card.addEventListener('click', () => {
+          if (roomSelectedApps.has(app.id)) {
+            roomSelectedApps.delete(app.id);
+            card.classList.remove('selected');
+          } else {
+            roomSelectedApps.add(app.id);
+            card.classList.add('selected');
+          }
+          updateRoomSelectCount();
+        });
+        grid.appendChild(card);
+      });
+    }
+    function updateRoomSelectCount() {
+      document.getElementById('room-select-count').textContent = roomSelectedApps.size + '個 選択中';
+    }
+    function roomSelectAll() {
+      roomSelectedApps = new Set(apps.map(a => a.id));
+      document.querySelectorAll('.app-select-card').forEach(c => c.classList.add('selected'));
+      updateRoomSelectCount();
+    }
+    function roomDeselectAll() {
+      roomSelectedApps = new Set();
+      document.querySelectorAll('.app-select-card').forEach(c => c.classList.remove('selected'));
+      updateRoomSelectCount();
+    }
+    function submitRoom() {
+      const name = document.getElementById('room-name-input').value.trim();
+      if (!name) { showToast('教室のなまえを入力してください ✍️'); return; }
+      if (roomSelectedApps.size === 0) { showToast('アプリを1つ以上選んでください 📱'); return; }
+
+      const btn = document.getElementById('room-save-btn');
+      btn.disabled = true; btn.textContent = '保存中...';
+
+      const roomData = {
+        code: editingRoomCode,
+        room_name: name,
+        app_ids: Array.from(roomSelectedApps).join(',')
+      };
+
+      if (editingRoomCode) {
+        // 更新
+        google.script.run.withSuccessHandler(r => {
+          btn.disabled = false; btn.textContent = '💾 保存する';
+          if (r.success) {
+            showToast('教室を更新しました ✅');
+            closeRoomForm();
+            loadRooms();
+          } else { showToast(r.message || 'エラーが起きました 😢'); }
+        }).withFailureHandler(() => { btn.disabled = false; btn.textContent = '💾 保存する'; showToast('エラーが起きました 😢'); }).updateRoom(roomData, storedTeacherPw, teacherName);
+      } else {
+        // 新規作成
+        google.script.run.withSuccessHandler(r => {
+          btn.disabled = false; btn.textContent = '✨ 教室をつくる';
+          if (r.success) {
+            showToast('教室をつくりました！コード：' + r.code + ' 🎉');
+            closeRoomForm();
+            loadRooms();
+          } else { showToast(r.message || 'エラーが起きました 😢'); }
+        }).withFailureHandler(() => { btn.disabled = false; btn.textContent = '✨ 教室をつくる'; showToast('エラーが起きました 😢'); }).createRoom(roomData, storedTeacherPw, teacherName);
+      }
+    }
+    function handleDeleteRoom(code, name) {
+      if (!confirm('「' + name + '」を削除しますか？\nこの教室のコードは使えなくなります。')) return;
+      google.script.run.withSuccessHandler(r => {
+        if (r.success) {
+          showToast('「' + name + '」を削除しました');
+          rooms = rooms.filter(rm => rm.code !== code);
+          renderRoomList();
+        } else { showToast(r.message || 'エラーが起きました 😢'); }
+      }).withFailureHandler(() => showToast('エラーが起きました 😢')).deleteRoom(code, storedTeacherPw, teacherName, name);
+    }
+
+    // ========================================
+    // 管理パネル
+    // ========================================
+    function openAdminModal() {
+      switchTab('add');
+      resetAddForm();
+      document.getElementById('admin-modal').classList.add('open');
+    }
+    function closeAdminModal() { document.getElementById('admin-modal').classList.remove('open'); editingAppId=null; }
+    function switchTab(tab) {
+      const tabs = ['add','edit','tag','log'];
+      document.querySelectorAll('.admin-tab').forEach((t,i) => t.classList.toggle('active', tabs[i]===tab));
+      tabs.forEach(t => document.getElementById('section-'+t).classList.toggle('active', t===tab));
+      if (tab === 'add') { renderAddTagChips(); }
+      if (tab === 'edit') { closeEditForm(); renderAppList(); }
+      if (tab === 'tag') { renderTagManageList(); }
+      if (tab === 'log') { loadLogs(); }
+    }
+
+    // ➕ アプリ追加
+    function resetAddForm() {
+      ['f-title','f-desc','f-url','f-image'].forEach(id => document.getElementById(id).value = '');
+      addSelectedTags = new Set();
+    }
+    function renderAddTagChips() {
+      const wrap = document.getElementById('add-tag-select'); wrap.innerHTML = '';
+      if (!masterTags.length) { wrap.innerHTML = '<span style="font-size:0.82rem;color:var(--c-gray)">タグがありません。「タグ」タブから追加してください。</span>'; return; }
+      masterTags.forEach(tag => {
+        const c = document.createElement('span');
+        c.className = 'tag-chip' + (addSelectedTags.has(tag) ? ' selected' : '');
+        c.textContent = tag;
+        c.addEventListener('click', () => { addSelectedTags.has(tag)?addSelectedTags.delete(tag):addSelectedTags.add(tag); c.classList.toggle('selected'); });
+        wrap.appendChild(c);
+      });
+    }
+    function submitAddApp() {
+      const title = document.getElementById('f-title').value.trim();
+      const url = document.getElementById('f-url').value.trim();
+      if (!title||!url) { showToast('なまえとURLは必須です ✍️'); return; }
+      const btn = document.getElementById('add-submit-btn'); btn.disabled=true; btn.textContent='追加中...';
+      const appData = { title, description:document.getElementById('f-desc').value.trim(), url, image_url:document.getElementById('f-image').value.trim(), tags:Array.from(addSelectedTags).join(',') };
+      google.script.run.withSuccessHandler(r => {
+        btn.disabled=false; btn.textContent='追加する';
+        if(r.success){showToast('追加できました！🎉');resetAddForm();renderAddTagChips();loadData();}
+        else showToast(r.message||'エラーが起きました 😢');
+      }).withFailureHandler(()=>{btn.disabled=false;btn.textContent='追加する';showToast('エラーが起きました 😢');}).addApp(appData, storedPw);
+    }
+
+    // 📋 アプリ編集 - 一覧
+    function renderAppList() {
+      const area = document.getElementById('app-list-area'); area.innerHTML = '';
+      if (!apps.length) { area.innerHTML = '<div class="tag-empty">アプリがまだありません</div>'; return; }
+      const emojis = ['🎮','🎲','🎯','🎪','📚','✏️','🧩','🎨','🔬','🌟'];
+      apps.forEach((app, i) => {
+        const item = document.createElement('div');
+        item.className = 'app-list-item' + (editingAppId===app.id?' editing':'');
+        item.id = 'appitem-'+app.id;
+        const hasImg = app.image_url && app.image_url.trim();
+        item.innerHTML = `
+          <div class="app-list-icon">${hasImg ? `<img src="${app.image_url}" onerror="this.parentNode.textContent='${emojis[i%emojis.length]}'">` : emojis[i%emojis.length]}</div>
+          <div class="app-list-info">
+            <div class="app-list-title">${app.title}</div>
+            <div class="app-list-sub">${app.description||'（せつめいなし）'}</div>
+          </div>
+          <div class="app-list-actions">
+            <button class="app-list-btn edit-btn" title="編集">✏️</button>
+            <button class="app-list-btn del-btn" title="削除">🗑</button>
+          </div>`;
+        item.querySelector('.edit-btn').addEventListener('click', (e) => { e.stopPropagation(); openEditForm(app.id); });
+        item.querySelector('.del-btn').addEventListener('click', (e) => { e.stopPropagation(); handleDeleteApp(app.id, app.title); });
+        area.appendChild(item);
+      });
+    }
+
+    // 📋 アプリ編集 - 編集フォーム
+    function openEditForm(appId) {
+      const app = apps.find(a => a.id === appId);
+      if (!app) return;
+      editingAppId = appId;
+      editSelectedTags = new Set(app.tags ? app.tags.split(',').map(t=>t.trim()).filter(Boolean) : []);
+      const area = document.getElementById('edit-form-area');
+      area.style.display = 'block';
+      area.innerHTML = `
+        <div class="edit-form-wrap">
+          <div class="edit-form-header">
+            <div class="edit-form-title">✏️ 「${app.title}」を編集</div>
+            <button class="edit-form-close" onclick="closeEditForm()">✕</button>
+          </div>
+          <div class="form-group">
+            <label class="form-label">アプリのなまえ *</label>
+            <input type="text" id="e-title" class="form-input" value="${escHtml(app.title)}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">せつめい</label>
+            <textarea id="e-desc" class="form-textarea" rows="2">${escHtml(app.description||'')}</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">アプリのURL *</label>
+            <input type="url" id="e-url" class="form-input" value="${escHtml(app.url)}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">画像のURL</label>
+            <input type="url" id="e-image" class="form-input" value="${escHtml(app.image_url||'')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">タグ（クリックで選択）</label>
+            <div class="tag-select-wrap" id="edit-tag-select"></div>
+          </div>
+          <div class="edit-btn-row">
+            <button class="edit-delete-btn" onclick="handleDeleteApp('${app.id}','${escHtml(app.title)}')">🗑 削除</button>
+            <button class="edit-save-btn" id="edit-save-btn" onclick="submitEditApp()">💾 保存する</button>
+          </div>
+        </div>`;
+      renderEditTagChips();
+      document.querySelectorAll('.app-list-item').forEach(el => el.classList.remove('editing'));
+      const target = document.getElementById('appitem-'+appId);
+      if (target) target.classList.add('editing');
+      area.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }
+    function closeEditForm() {
+      editingAppId = null;
+      document.getElementById('edit-form-area').style.display = 'none';
+      document.getElementById('edit-form-area').innerHTML = '';
+      document.querySelectorAll('.app-list-item').forEach(el => el.classList.remove('editing'));
+    }
+    function renderEditTagChips() {
+      const wrap = document.getElementById('edit-tag-select');
+      if (!wrap) return;
+      wrap.innerHTML = '';
+      if (!masterTags.length) { wrap.innerHTML = '<span style="font-size:0.82rem;color:var(--c-gray)">タグがありません</span>'; return; }
+      masterTags.forEach(tag => {
+        const c = document.createElement('span');
+        c.className = 'tag-chip' + (editSelectedTags.has(tag) ? ' selected' : '');
+        c.textContent = tag;
+        c.addEventListener('click', () => { editSelectedTags.has(tag)?editSelectedTags.delete(tag):editSelectedTags.add(tag); c.classList.toggle('selected'); });
+        wrap.appendChild(c);
+      });
+    }
+    function submitEditApp() {
+      const title = document.getElementById('e-title').value.trim();
+      const url = document.getElementById('e-url').value.trim();
+      if (!title||!url) { showToast('なまえとURLは必須です ✍️'); return; }
+      const btn = document.getElementById('edit-save-btn'); btn.disabled=true; btn.textContent='保存中...';
+      const appData = {
+        id: editingAppId, title,
+        description: document.getElementById('e-desc').value.trim(),
+        url, image_url: document.getElementById('e-image').value.trim(),
+        tags: Array.from(editSelectedTags).join(',')
+      };
+      google.script.run.withSuccessHandler(r => {
+        btn.disabled=false; btn.textContent='💾 保存する';
+        if (r.success) {
+          showToast('保存しました！✅');
+          const idx = apps.findIndex(a=>a.id===editingAppId);
+          if (idx!==-1) { apps[idx] = {...apps[idx], ...appData}; }
+          closeEditForm(); renderAppList(); renderApps(); renderFilterTags();
+        } else { showToast(r.message||'エラーが起きました 😢'); }
+      }).withFailureHandler(()=>{btn.disabled=false;btn.textContent='💾 保存する';showToast('エラーが起きました 😢');}).updateApp(appData, storedPw);
+    }
+    function handleDeleteApp(appId, appTitle) {
+      if (!confirm('「' + appTitle + '」を削除しますか？\nこの操作は取り消せません。')) return;
+      google.script.run.withSuccessHandler(r => {
+        if (r.success) {
+          showToast('「' + appTitle + '」を削除しました');
+          apps = apps.filter(a => a.id !== appId);
+          if (editingAppId === appId) closeEditForm();
+          renderAppList(); renderApps(); renderFilterTags();
+        } else { showToast(r.message||'エラーが起きました 😢'); }
+      }).withFailureHandler(()=>showToast('エラーが起きました 😢')).deleteApp(appId, storedPw);
+    }
+
+    // 🏷 タグ管理
+    function renderTagManageList() {
+      const list = document.getElementById('tag-manage-list'); list.innerHTML = '';
+      if (!masterTags.length) { list.innerHTML = '<div class="tag-empty">タグがまだありません</div>'; return; }
+      masterTags.forEach(tag => {
+        const item = document.createElement('span'); item.className = 'tag-manage-item';
+        item.innerHTML = `${tag}<button class="tag-delete-btn" title="削除">✕</button>`;
+        item.querySelector('.tag-delete-btn').addEventListener('click', () => handleDeleteTag(tag));
+        list.appendChild(item);
+      });
+    }
+    function handleAddTag() {
+      const input = document.getElementById('new-tag-input');
+      const name = input.value.trim();
+      if (!name) { showToast('タグ名を入力してください'); return; }
+      google.script.run.withSuccessHandler(r => {
+        if (r.success) {
+          input.value=''; showToast('「'+name+'」を追加しました 🏷');
+          if(!masterTags.includes(name)){masterTags.push(name);masterTags.sort();}
+          renderTagManageList(); renderFilterTags();
+        } else showToast(r.message||'エラーが起きました');
+      }).withFailureHandler(()=>showToast('エラーが起きました 😢')).addTag(name, storedPw);
+    }
+    function handleDeleteTag(tagName) {
+      if (!confirm('「'+tagName+'」を削除しますか？\nアプリからもこのタグが外れます。')) return;
+      google.script.run.withSuccessHandler(r => {
+        if (r.success) {
+          showToast('「'+tagName+'」を削除しました');
+          masterTags = masterTags.filter(t=>t!==tagName);
+          addSelectedTags.delete(tagName); editSelectedTags.delete(tagName);
+          apps.forEach(a => { if(a.tags) a.tags = a.tags.split(',').map(t=>t.trim()).filter(t=>t&&t!==tagName).join(','); });
+          renderTagManageList(); renderFilterTags(); renderApps();
+        } else showToast(r.message||'エラーが起きました');
+      }).withFailureHandler(()=>showToast('エラーが起きました 😢')).deleteTag(tagName, storedPw);
+    }
+    document.getElementById('new-tag-input').addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();handleAddTag();} });
+
+    // 📊 操作ログ
+    function loadLogs() {
+      const list = document.getElementById('log-list');
+      list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--c-gray);">読み込み中...</div>';
+      google.script.run.withSuccessHandler(r => {
+        if (r.success) { renderLogs(r.logs); }
+        else { list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--c-pink);">' + (r.message||'エラー') + '</div>'; }
+      }).withFailureHandler(() => {
+        list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--c-pink);">読み込みに失敗しました</div>';
+      }).getLogs(storedPw);
+    }
+    function renderLogs(logs) {
+      const list = document.getElementById('log-list');
+      list.innerHTML = '';
+      if (!logs.length) {
+        list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--c-gray);">📊 まだ操作ログがありません</div>';
+        return;
+      }
+      logs.forEach(log => {
+        const d = new Date(log.timestamp);
+        const dateStr = (d.getMonth()+1) + '/' + d.getDate() + ' ' + d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+        const item = document.createElement('div');
+        item.style.cssText = 'display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--c-cream);margin-bottom:6px;font-size:0.85rem;';
+        const actionColor = log.action.includes('削除') ? 'var(--c-red)' : log.action.includes('作成') ? 'var(--c-green)' : 'var(--c-sky)';
+        item.innerHTML = '<span style="color:var(--c-gray);font-size:0.78rem;white-space:nowrap;">' + dateStr + '</span>'
+          + '<span style="font-weight:700;white-space:nowrap;">' + escHtml(log.teacher_name) + '</span>'
+          + '<span style="padding:3px 8px;border-radius:6px;font-size:0.75rem;font-weight:700;color:white;background:' + actionColor + ';white-space:nowrap;">' + escHtml(log.action) + '</span>'
+          + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--c-gray);">' + escHtml(log.detail) + '</span>';
+        list.appendChild(item);
+      });
+    }
+
+    // 🔥 人気ランキング
+    function renderRanking() {
+      const list = document.getElementById('ranking-list');
+      list.innerHTML = '';
+      const medals = ['🥇', '🥈', '🥉'];
+      const sorted = [...apps].sort((a, b) => (Number(b.clicks) || 0) - (Number(a.clicks) || 0));
+      const top3 = sorted.slice(0, 3).filter(a => (Number(a.clicks) || 0) > 0);
+      if (top3.length === 0) {
+        list.innerHTML = '<div class="rank-empty">まだデータがないよ 🎮<br>アプリで遊んでみてね！</div>';
+        return;
+      }
+      top3.forEach((app, i) => {
+        const a = document.createElement('a');
+        a.className = 'rank-item';
+        a.href = app.url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.onclick = function() { handlePlayClick(app.id); };
+        a.innerHTML = `
+          <span class="rank-medal">${medals[i]}</span>
+          <div class="rank-info">
+            <div class="rank-name">${app.title}</div>
+            <div class="rank-clicks">${app.clicks || 0} 回プレイ</div>
+          </div>`;
+        list.appendChild(a);
+      });
+    }
+
+    // 📊 クリック記録
+    function handlePlayClick(appId) {
+      const app = apps.find(a => a.id === appId);
+      if (app) { app.clicks = (Number(app.clicks) || 0) + 1; renderRanking(); }
+      google.script.run.withFailureHandler(() => {}).recordClick(appId);
+    }
+
+    // ユーティリティ
+    function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+    function scrollToTop() { window.scrollTo({top:0,behavior:'smooth'}); }
+    function escHtml(str) { const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
+    function copyClassUrl() {
+      const url = SCRIPT_URL + '?mode=class';
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+          showToast('📋 子ども用URLをコピーしました！');
+        }).catch(() => {
+          fallbackCopy(url);
+        });
+      } else {
+        fallbackCopy(url);
+      }
+    }
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('📋 子ども用URLをコピーしました！');
+    }
+
+    // モーダル外クリックで閉じる
+    document.getElementById('pw-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closePasswordModal(); });
+    document.getElementById('admin-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeAdminModal(); });
+    document.getElementById('code-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeCodeModal(); });
+    document.getElementById('teacher-pw-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeTeacherPwModal(); });
+    document.getElementById('teacher-name-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeTeacherNameModal(); });
+    document.getElementById('teacher-name-input').addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();submitTeacherName();} });
+    document.getElementById('teacher-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeTeacherModal(); });
+  </script>
+<script>
+if('serviceWorker' in navigator && location.protocol==='https:'){try{navigator.serviceWorker.register('sw.js').catch(function(){});}catch(e){}}
+</script>
+</body>
+</html>
